@@ -15,6 +15,7 @@ class xkokokeys {
 
   static void intercept(XPointer user_data, XRecordInterceptData* data);
   void intercept(XRecordInterceptData* data);
+  void _intercept(XRecordInterceptData* data);
 
   Display* data_conn_;
   Display* ctrl_conn_;

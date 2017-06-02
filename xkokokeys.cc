@@ -19,6 +19,8 @@
 
 #include "xkokokeys.h"
 
+static bool debug = true;
+
 int main() {
   xkokokeys keys;
   keys.wait();
@@ -126,20 +128,36 @@ void xkokokeys::init_record_context() {
 void xkokokeys::wait() { pthread_join(thread_, NULL); }
 
 void xkokokeys::intercept(XPointer user_data, XRecordInterceptData* data) {
-  return reinterpret_cast<xkokokeys*>(user_data)->intercept(data);
+  reinterpret_cast<xkokokeys*>(user_data)->intercept(data);
 }
-
+////////////////////////////////////////////////////////////////////////////////
 void xkokokeys::intercept(XRecordInterceptData* data) {
   XLockDisplay(ctrl_conn_);
   if (data->category == XRecordFromServer) {
-    int key_event = data->data[0];
-    KeyCode key_code = data->data[1];
-
-    fprintf(stdout, "Intercepted key event %d, key code %d\n", key_event,
-            key_code);
-    goto exit;
+    this->_intercept(data);
   }
-exit:
   XUnlockDisplay(ctrl_conn_);
   XRecordFreeData(data);
+}
+void xkokokeys::_intercept(XRecordInterceptData* data) {
+  int key_event = data->data[0];
+  KeyCode key_code = data->data[1];
+
+  if (key_event == ButtonPress || key_event == ButtonRelease) return;
+
+  KeySym key_sym = XkbKeycodeToKeysym(ctrl_conn_, key_code, 0, 0);
+  const char* key_string = XKeysymToString(key_sym);
+
+
+  if (debug) {
+    fprintf(stdout, "Intercepted key event %d, key code %d, key string '%s'\n",
+            key_event, key_code, key_string);
+  }
+
+  bool pressed = key_event == KeyPress ? true : false;
+
+  if (key_code == 65) {
+    XTestFakeKeyEvent(ctrl_conn_, 255, pressed ? True : False, 0);
+    XFlush(ctrl_conn_);
+  }
 }
